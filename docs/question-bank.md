@@ -1,8 +1,8 @@
 # Question bank
 
-The updated bank replaces the initial easy prompts with 80 questions curated for medium difficulty. There are eight questions in each of ten categories. Space, Geography, History, Science, and Books provide general knowledge; Movies, Technology, Music, Gaming, and Motorsport provide specialist topics. Both regular and bonus questions draw from this bank, without repeats during one game.
+The updated bank replaces the initial easy prompts with 80 questions curated for medium difficulty. There are eight questions in each of ten categories. Space, Geography, History, Science, and Books provide general knowledge; Movies, Technology, Music, Gaming, and Motorsport provide specialist topics. Both regular and bonus questions draw from the same prepared deck, filtered to the host-selected categories.
 
-Medium is an editorial target rather than a measured difficulty rating. Some topics will feel easier to fans. Tune the bank using first-attempt accuracy and player feedback. Eight players can use up to 72 questions in one game, so the bank still supports the longest possible game without repeats.
+Medium is an editorial target rather than a measured difficulty rating. Some topics will feel easier to fans. Tune the bank using first-attempt accuracy and player feedback. Eight players can use up to 72 questions in one game. With all categories selected, the curated bank covers that without repeats; a smaller selection may repeat after its unique questions are consumed, as explained in the lobby.
 
 ## Multiple-choice format
 
