@@ -1,3 +1,4 @@
+import { CATEGORIES } from '../shared/categories.js';
 import { QUESTIONS, normalizeAnswer } from '../shared/questions.js';
 
 const API_ORIGIN = 'https://opentdb.com';
@@ -89,23 +90,29 @@ export class TriviaProvider {
     })();
     return this.refreshing;
   }
-  async loadDeck() {
+  async loadDeck(categories = CATEGORIES) {
+    const selected = new Set(categories);
     this.pool = this.pool.filter(q => !this.recent.has(questionKey(q)));
     if (this.pool.length < 30) await this.refresh();
-    const live = this.pool.splice(0, 50);
+    const live = this.pool.filter(q => selected.has(q.category)).slice(0, 50);
+    const taken = new Set(live); this.pool = this.pool.filter(q => !taken.has(q));
     const keys = new Set(live.map(questionKey));
     // Least recently PLAYED local prompts come first; unused deck entries don't count.
     const local = shuffle(QUESTIONS)
-      .filter(q => !keys.has(questionKey(q)))
+      .filter(q => selected.has(q.category) && !keys.has(questionKey(q)))
       .sort((a, b) => (this.recent.get(questionKey(a)) ?? 0) - (this.recent.get(questionKey(b)) ?? 0))
       .slice(0, DECK_SIZE - live.length);
     const combined = [...live, ...local];
     const fresh = shuffle(combined.filter(q => !this.recent.has(questionKey(q))));
     const repeats = combined.filter(q => this.recent.has(questionKey(q)))
       .sort((a, b) => this.recent.get(questionKey(a)) - this.recent.get(questionKey(b)));
+    const unique = [...fresh, ...repeats];
+    if (!unique.length) throw new Error('No questions in these categories');
+    const deck = [...unique];
+    while (deck.length < DECK_SIZE) deck.push(...shuffle(unique).slice(0, DECK_SIZE - deck.length));
     return {
-      deck: [...fresh, ...repeats],
-      info: { status: 'ready', mode: live.length ? 'mixed' : 'local', liveCount: live.length, curatedCount: local.length, ...(live.length ? { attribution: { ...CREDIT } } : {}) },
+      deck,
+      info: { status: 'ready', mode: live.length ? 'mixed' : 'local', liveCount: live.length, curatedCount: local.length, uniqueCount: unique.length, mayRepeat: unique.length < 72, ...(live.length ? { attribution: { ...CREDIT } } : {}) },
     };
   }
 }

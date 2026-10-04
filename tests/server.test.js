@@ -94,3 +94,21 @@ test('rematch preloads a new deck instead of replaying the first game deck', asy
   const result = await post('/api/action', { action: 'rematch' }, a.session);
   assert.equal(result.status, 200); assert.equal(result.data.phase, 'lobby'); assert.equal(loads, 2);
 });
+
+test('latest category selection wins when asynchronous preparations finish out of order', async t => {
+  const pending = [];
+  const { post, rooms } = await fixture(t, { loadDeck: categories => new Promise(resolve => pending.push({ categories, resolve })) });
+  const a = (await post('/api/rooms', { name: 'Host' })).data;
+  const one = ['Space', 'History', 'Gaming', 'Motorsport'];
+  const two = ['Movies', 'Books', 'Music', 'Science'];
+  await post('/api/action', { action: 'categories', categories: one }, a.session);
+  await post('/api/action', { action: 'categories', categories: two }, a.session);
+  const { QUESTIONS } = await import('../shared/questions.js');
+  const finish = entry => entry.resolve({ deck: QUESTIONS.filter(q => entry.categories.includes(q.category)), info: { status: 'ready', mode: 'local' } });
+  finish(pending[2]); await new Promise(resolve => setImmediate(resolve));
+  finish(pending[0]); finish(pending[1]); await new Promise(resolve => setImmediate(resolve));
+  const game = rooms.get(a.state.code);
+  assert.deepEqual(new Set(game.categories), new Set(two));
+  assert.ok(game.deck.every(q => two.includes(q.category)));
+  assert.equal(game.questionSource.status, 'ready');
+});

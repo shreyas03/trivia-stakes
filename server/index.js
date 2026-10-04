@@ -52,18 +52,28 @@ export function createGameServer({ questionProvider = new TriviaProvider({ enabl
     return { game, id: session.id };
   }
   function prepareQuestions(game) {
-    if (preparations.has(game.code)) return preparations.get(game.code);
-    game.questionSource = { status: 'loading', mode: 'local', liveCount: 0, curatedCount: 80 };
+    const selected = [...game.categories];
+    const generation = Symbol();
+    game.questionSource = { status: 'loading', mode: 'local', liveCount: 0, curatedCount: 0 };
     game.touch(Date.now());
-    const preparation = Promise.resolve().then(() => questionProvider.loadDeck()).then(({ deck, info }) => {
-      if (game.phase !== 'lobby') return;
-      game.deck = deck; game.cursor = 0; game.questionSource = info;
+    const preparation = Promise.resolve().then(() => questionProvider.loadDeck(selected)).then(({ deck, info }) => {
+      if (game.phase !== 'lobby' || preparations.get(game.code)?.generation !== generation) return;
+      // Enforce selections even if a provider returns an unrelated category.
+      const filtered = deck.filter(q => selected.includes(q.category));
+      if (!filtered.length) throw new Error('Empty selected deck');
+      game.deck = filtered; game.cursor = 0; game.questionSource = info;
     }).catch(() => {
-      game.questionSource = { status: 'ready', mode: 'local', liveCount: 0, curatedCount: game.deck.length };
+      if (preparations.get(game.code)?.generation !== generation) return;
+      const fallback = new Game('fallback').deck.filter(q => selected.includes(q.category));
+      const uniqueCount = fallback.length;
+      while (fallback.length < 80) fallback.push(...fallback.slice(0, 80 - fallback.length));
+      game.deck = fallback; game.cursor = 0;
+      game.questionSource = { status: 'ready', mode: 'local', liveCount: 0, curatedCount: uniqueCount, uniqueCount, mayRepeat: uniqueCount < 72 };
     }).finally(() => {
+      if (preparations.get(game.code)?.generation !== generation) return;
       preparations.delete(game.code); game.touch(Date.now()); publish(game);
     });
-    preparations.set(game.code, preparation);
+    preparations.set(game.code, { generation, preparation });
     return preparation;
   }
   function createSession(game, name) {
@@ -114,7 +124,7 @@ export function createGameServer({ questionProvider = new TriviaProvider({ enabl
         if (url.pathname === '/api/action') {
           if (auth.game.tick()) publish(auth.game);
           auth.game.action(auth.id, payload.action, payload);
-          if (payload.action === 'rematch') prepareQuestions(auth.game);
+          if (['rematch', 'categories'].includes(payload.action)) prepareQuestions(auth.game);
           publish(auth.game); json(res, 200, auth.game.view(auth.id)); return;
         }
       }

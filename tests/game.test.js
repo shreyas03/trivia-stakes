@@ -165,3 +165,20 @@ test('arbitrary answer text and forged choice IDs are rejected without changing 
   assert.throws(() => game.action('p0', 'answer', { choiceId: 'invalid', turn: game.turn }), GameError);
   assert.equal(game.player('p0').score, 1000); assert.equal(game.phase, 'answer');
 });
+
+test('category selection is host-only, lobby-only, minimum four and resets readiness', () => {
+  const game = new Game('SELECT'); game.addPlayer('host', 'Host'); game.addPlayer('guest', 'Guest');
+  const categories = ['Space', 'History', 'Gaming', 'Motorsport'];
+  game.action('guest', 'ready');
+  for (const invalid of [[], categories.slice(0, 3), [...categories, 'Unknown'], ['Space', 'Space', 'Space', 'Space']]) {
+    assert.throws(() => game.action('host', 'categories', { categories: invalid }), GameError);
+  }
+  assert.throws(() => game.action('guest', 'categories', { categories }), GameError);
+  game.action('host', 'categories', { categories });
+  assert.deepEqual(new Set(game.view('guest').categories), new Set(categories));
+  assert.ok(game.players.every(p => !p.ready));
+  assert.equal(game.questionSource.status, 'loading');
+  assert.throws(() => game.action('host', 'start'), GameError);
+  game.phase = 'bidding';
+  assert.throws(() => game.action('host', 'categories', { categories }), GameError);
+});

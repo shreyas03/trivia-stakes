@@ -1,3 +1,4 @@
+import { CATEGORIES } from './categories.js';
 import { QUESTIONS } from './questions.js';
 
 export const RULES = Object.freeze({ startingPoints: 1000, rounds: 8, minBid: 50, maxBid: 300, bidStep: 10, biddingMs: 25000, answerMs: 15000, bonusIntroMs: 25000, countdownMs: 3000, buzzerMs: 20000, resultMs: 10000 });
@@ -18,6 +19,7 @@ function shuffle(items) {
 export class Game {
   constructor(code, { now = Date.now(), deck = shuffle(QUESTIONS), onQuestionUsed = () => {} } = {}) {
     this.code = code;
+    this.categories = [...CATEGORIES];
     this.players = [];
     this.hostId = null;
     this.phase = 'lobby';
@@ -153,6 +155,12 @@ export class Game {
       const target = this.player(payload.playerId);
       requireRule(target && target.id !== id && !target.connected, 'You can only remove a disconnected player from the lobby.');
       this.players = this.players.filter(p => p.id !== target.id);
+    } else if (action === 'categories') {
+      requireRule(id === this.hostId && this.phase === 'lobby', 'Only the host can choose categories in the lobby.');
+      requireRule(Array.isArray(payload.categories) && payload.categories.length >= 4 && payload.categories.length <= CATEGORIES.length && payload.categories.every(c => CATEGORIES.includes(c)) && new Set(payload.categories).size === payload.categories.length, 'Choose at least four valid categories.');
+      this.categories = CATEGORIES.filter(c => payload.categories.includes(c));
+      this.questionSource = { status: 'loading', mode: 'local', liveCount: 0, curatedCount: 0 };
+      for (const p of this.players) p.ready = false;
     } else if (action === 'start') {
       requireRule(id === this.hostId, 'Only the host can start the game.');
       requireRule(this.phase === 'lobby', 'The game has already started.');
@@ -208,7 +216,7 @@ export class Game {
         text: this.question.text, category: this.question.category,
         ...(id === this.activeId && ['answer', 'bonus-answer'].includes(this.phase) ? { choices: this.question.choices.map(choice => ({ ...choice })) } : {}),
       } : null,
-      rules: RULES, questionSource: this.questionSource,
+      rules: RULES, questionSource: this.questionSource, categories: [...this.categories], availableCategories: [...CATEGORIES],
     };
   }
 }

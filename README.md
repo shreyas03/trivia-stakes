@@ -87,3 +87,9 @@ Difficulty is an editorial/provider label; calibrate it with players before a co
 The average game duration depends on the number of players and misses. The landing page’s 15-minute estimate is a target, not a guarantee; extensive bonus play can take longer.
 
 See [deployment instructions](docs/deployment.md) and [architecture notes](docs/architecture.md).
+
+
+### Host category selection
+In the lobby, the host chooses at least four of the ten categories. All are selected by default. The same selection filters regular and bonus questions, including live questions and curated fallback. Changes reset player readiness and prepare a new deck; only the latest selection is applied. Rematches retain the selection.
+
+A small selected bank may repeat questions after its unique prompts are consumed. The lobby displays this notice. A complete deck is prepared before play, so an outage or bonus-heavy game never adds an unselected category. Space and Motorsport currently use curated questions; live questions are matched to the other supported category labels. Cache and repeat history reset on server restart.

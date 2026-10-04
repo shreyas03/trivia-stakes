@@ -78,3 +78,13 @@ test('expired or exhausted tokens are discarded and the current lobby remains pl
   const { deck, info } = await provider.loadDeck();
   assert.equal(provider.token, null); assert.equal(info.mode, 'local'); assert.equal(deck.length, 80);
 });
+
+test('selected categories filter live and fallback questions and fill a worst-case game', async () => {
+  const categories = ['Space', 'History', 'Gaming', 'Motorsport'];
+  const { provider } = mockService();
+  const { deck, info } = await provider.loadDeck(categories);
+  assert.equal(deck.length, 80); assert.equal(info.liveCount, 0);
+  assert.equal(info.uniqueCount, 32); assert.equal(info.mayRepeat, true);
+  assert.ok(deck.every(q => categories.includes(q.category)));
+  assert.equal(new Set(deck.slice(0, 32).map(questionKey)).size, 32);
+});
