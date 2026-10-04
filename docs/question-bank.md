@@ -4,6 +4,12 @@ The updated bank replaces the initial easy prompts with 80 questions curated for
 
 Medium is an editorial target rather than a measured difficulty rating. Some topics will feel easier to fans. Tune the bank using first-attempt accuracy and player feedback. Eight players can use up to 72 questions in one game, so the bank still supports the longest possible game without repeats.
 
+## Multiple-choice format
+
+Each question has one correct option and three plausible, hand-written distractors. The options are shuffled server-side and sent only to the active answering player. Other players see the question but cannot use a previous wrong selection to eliminate options. A selection requires a separate lock-in action. Correctness is decided on the server using the selected option ID, with no text-entry judging.
+
+Answer aliases remain as authoring metadata and help check that no distractor is an accepted alternate answer. They are not a text-entry feature in the current game. Live API integration is a future step; this version uses the curated local bank.
+
 ## Writing and answer policy
 
 - Prefer a specific short answer over an essay or subjective judgment.

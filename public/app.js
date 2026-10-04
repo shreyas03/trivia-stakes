@@ -54,7 +54,7 @@ function acceptState(next) {
   if (state && next.revision < state.revision) return;
   const changedTurn = next.turn !== lastTurn;
   state = next; lastTurn = next.turn;
-  if (changedTurn) sessionStorage.removeItem('pool-party-answer');
+  if (changedTurn) sessionStorage.removeItem('pool-party-choice');
   render();
 }
 
@@ -98,7 +98,7 @@ function questionStage() {
   const bonus = state.phase.startsWith('bonus');
   const buzzing = state.phase === 'bonus-buzz';
   const out = state.eliminated.includes(state.you);
-  return `<div class="stage-head"><span class="eyebrow">${bonus ? 'A SHOT AT THE POOL' : 'TIME TO PROVE IT'}</span><span class="phase-pill">${buzzing ? 'BUZZER OPEN' : bonus ? 'BONUS ANSWER' : 'ANSWER TIME'}</span></div>${timerMarkup(buzzing ? 'BUZZ BEFORE' : 'ANSWER BEFORE')}<div class="question-category">${esc(state.question.category)}</div><h2 class="question-text">${esc(state.question.text)}</h2>${buzzing ? out ? '<div class="notice">You’re out of this bonus sequence. Cheer on the others—you’re back next round.</div>' : gameButton('buzz', 'BUZZ IN', false, 'buzzer full') : yours ? `<div class="your-turn">YOUR MOMENT ${bonus ? `· WIN ${number(state.pool)} POINTS` : `· CORRECT WINS ${number(me().bid + state.pool)} POINTS`}</div><form id="answer-form"><label for="answer">Your answer</label><div class="answer-controls"><input id="answer" name="answer" maxlength="100" autocomplete="off" placeholder="Type a short answer…" required value="${esc(sessionStorage.getItem('pool-party-answer') ?? '')}"><button type="submit" class="button primary" data-game-action="answer-submit" data-locked="false" ${!online ? 'disabled' : ''}>Lock it in ↗</button></div></form><p class="small muted">${bonus ? 'No extra points lost if you miss. You’ll be out of this bonus sequence.' : `Wrong or out of time? ${number(me().bid)} points go into the pool.`}</p>` : `<div class="waiting-turn"><span class="avatar ${player(state.activeId)?.color}">${esc(player(state.activeId)?.name[0] ?? '?')}</span><p><strong>${esc(player(state.activeId)?.name)}</strong> is answering.<br><span class="muted">${out ? 'You return next round.' : 'Your moment could be next.'}</span></p></div>`}`;
+  return `<div class="stage-head"><span class="eyebrow">${bonus ? 'A SHOT AT THE POOL' : 'TIME TO PROVE IT'}</span><span class="phase-pill">${buzzing ? 'BUZZER OPEN' : bonus ? 'BONUS ANSWER' : 'ANSWER TIME'}</span></div>${timerMarkup(buzzing ? 'BUZZ BEFORE' : 'ANSWER BEFORE')}<div class="question-category">${esc(state.question.category)}</div><h2 class="question-text">${esc(state.question.text)}</h2>${buzzing ? out ? '<div class="notice">You’re out of this bonus sequence. Cheer on the others—you’re back next round.</div>' : gameButton('buzz', 'BUZZ IN', false, 'buzzer full') : yours ? `<div class="your-turn">YOUR MOMENT ${bonus ? `· WIN ${number(state.pool)} POINTS` : `· CORRECT WINS ${number(me().bid + state.pool)} POINTS`}</div><form id="answer-form"><fieldset class="answer-choices"><legend>Choose one answer</legend>${state.question.choices.map((choice, index) => `<label class="answer-option"><input type="radio" name="choiceId" value="${esc(choice.id)}" required ${sessionStorage.getItem('pool-party-choice') === choice.id ? 'checked' : ''}><span class="option-letter">${String.fromCharCode(65 + index)}</span><span>${esc(choice.text)}</span></label>`).join('')}</fieldset><button type="submit" class="button primary full" data-game-action="answer-submit" data-locked="false" ${!online ? 'disabled' : ''}>Lock it in ↗</button></form><p class="small muted">${bonus ? 'No extra points lost if you miss. You’ll be out of this bonus sequence.' : `Wrong or out of time? ${number(me().bid)} points go into the pool.`}</p>` : `<div class="waiting-turn"><span class="avatar ${player(state.activeId)?.color}">${esc(player(state.activeId)?.name[0] ?? '?')}</span><p><strong>${esc(player(state.activeId)?.name)}</strong> is answering.<br><span class="muted">${out ? 'You return next round.' : 'Your moment could be next.'}</span></p></div>`}`;
 }
 function bonusIntro() {
   return `<div class="stage-head"><span class="eyebrow">PLOT TWIST</span><span class="phase-pill coral-pill">BONUS TIME</span></div><h2>Nobody nailed it.<br>Who’s quickest?</h2><p class="stage-copy">There are <strong>${number(state.pool)} points</strong> up for grabs. A fresh question. A fresh chance.</p><ol class="rule-list bonus-rules"><li><strong>Buzz first to answer.</strong> No new bids. Everyone can play—even if you passed.</li><li><strong>Get it right, take the pool.</strong> No extra points lost if you miss.</li><li><strong>Miss and sit this bonus out.</strong> The remaining players get a different question.</li></ol><p class="small muted">If everyone misses, or nobody buzzes in 20 seconds, the pool clears. You all return next round. The first request to reach the server wins the buzzer.</p>${gameButton('ready', me().ready ? 'Got it ✓ — waiting for everyone' : 'Got it. Let’s buzz.', me().ready, 'full')}<p class="small muted">${state.players.filter(p => p.ready).length}/${state.players.length} ready · starts automatically in <span class="time">—</span> seconds.</p>`;
@@ -177,7 +177,7 @@ document.addEventListener('click', async event => {
   }
 });
 document.addEventListener('input', event => {
-  if (event.target.id === 'answer') sessionStorage.setItem('pool-party-answer', event.target.value);
+  if (event.target.name === 'choiceId') sessionStorage.setItem('pool-party-choice', event.target.value);
   if (event.target.id === 'code') event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 });
 document.addEventListener('submit', async event => {
@@ -194,7 +194,7 @@ document.addEventListener('submit', async event => {
     } catch (error) { toast(error.message, true); render(); }
     finally { busy = false; }
   } else if (form.id === 'bid-form') await action('bid', { amount: Number(values.amount) });
-  else if (form.id === 'answer-form') await action('answer', { answer: values.answer });
+  else if (form.id === 'answer-form') await action('answer', { choiceId: values.choiceId });
 });
 dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
 setInterval(updateTimers, 200);

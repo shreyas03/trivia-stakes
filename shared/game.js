@@ -1,4 +1,4 @@
-import { QUESTIONS, isCorrect } from './questions.js';
+import { QUESTIONS } from './questions.js';
 
 export const RULES = Object.freeze({ startingPoints: 1000, rounds: 8, minBid: 50, maxBid: 300, bidStep: 10, biddingMs: 25000, answerMs: 15000, bonusIntroMs: 25000, countdownMs: 3000, buzzerMs: 20000, resultMs: 10000 });
 const palette = ['coral', 'blue', 'yellow', 'purple', 'green', 'pink', 'orange', 'teal'];
@@ -55,7 +55,8 @@ export class Game {
   event(message) { this.events.push(message); this.events = this.events.slice(-5); }
   nextQuestion() {
     requireRule(this.cursor < this.deck.length, 'The question deck is exhausted.');
-    return this.deck[this.cursor++];
+    const question = this.deck[this.cursor++];
+    return { ...question, choices: shuffle(question.options).map((text, index) => ({ id: String(index), text })) };
   }
   beginRound(now) {
     if (this.round >= RULES.rounds) {
@@ -106,10 +107,11 @@ export class Game {
     this.deadline = now + RULES.resultMs;
     this.turn++;
   }
-  answer(id, answer, now, timedOut = false) {
+  answer(id, choiceId, now, timedOut = false) {
     const player = this.player(id);
     const bonus = this.phase === 'bonus-answer';
-    if (!timedOut && isCorrect(this.question, answer)) {
+    const selected = this.question.choices.find(choice => choice.id === choiceId);
+    if (!timedOut && selected?.text === this.question.answers[0]) {
       const reward = (bonus ? 0 : player.bid) + this.pool;
       player.score += reward; player.wins++;
       this.event(`${player.name} won ${reward} points.`);
@@ -162,8 +164,8 @@ export class Game {
       player.bid = amount; player.bidOrder = ++this.bidSequence;
     } else if (action === 'answer') {
       requireRule(['answer', 'bonus-answer'].includes(this.phase) && id === this.activeId && payload.turn === this.turn, 'It is not your answer turn anymore.');
-      requireRule(typeof payload.answer === 'string' && payload.answer.trim().length > 0 && payload.answer.length <= 100, 'Type a short answer before submitting.');
-      this.answer(id, payload.answer, now);
+      requireRule(typeof payload.choiceId === 'string' && this.question.choices.some(choice => choice.id === payload.choiceId), 'Choose one of the four answers.');
+      this.answer(id, payload.choiceId, now);
     } else if (action === 'buzz') {
       requireRule(this.phase === 'bonus-buzz' && payload.turn === this.turn, 'The buzzer is not open anymore.');
       requireRule(!this.eliminated.includes(id), 'You are out of this bonus sequence. You return next round.');
@@ -198,7 +200,10 @@ export class Game {
       players: this.players.map(p => ({ ...p })), activeId: this.activeId, order: this.order,
       eliminated: this.eliminated, result: this.result, events: this.events,
       category: this.phase === 'bidding' ? this.question.category : null,
-      question: reveal && this.question ? { text: this.question.text, category: this.question.category } : null,
+      question: reveal && this.question ? {
+        text: this.question.text, category: this.question.category,
+        ...(id === this.activeId && ['answer', 'bonus-answer'].includes(this.phase) ? { choices: this.question.choices.map(choice => ({ ...choice })) } : {}),
+      } : null,
       rules: RULES,
     };
   }

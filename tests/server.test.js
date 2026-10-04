@@ -46,7 +46,7 @@ test('concurrent buzzer requests yield exactly one winner', async t => {
   const a = (await post('/api/rooms', { name: 'Alice' })).data;
   const b = (await post('/api/join', { name: 'Bob', code: a.state.code })).data;
   const game = rooms.get(a.state.code);
-  game.phase = 'bonus-buzz'; game.question = game.deck[0]; game.pool = 100; game.deadline = Date.now() + 20000;
+  game.phase = 'bonus-buzz'; game.question = game.nextQuestion(); game.pool = 100; game.deadline = Date.now() + 20000;
   const responses = await Promise.all([post('/api/action', { action: 'buzz', turn: game.turn }, a.session), post('/api/action', { action: 'buzz', turn: game.turn }, b.session)]);
   assert.deepEqual(responses.map(r => r.status).sort(), [200, 400]); assert.equal(game.phase, 'bonus-answer');
 });
@@ -54,8 +54,9 @@ test('server ticks before accepting a late answer; late input cannot award point
   const { post, rooms } = await fixture(t);
   const a = (await post('/api/rooms', { name: 'Alice' })).data;
   const game = rooms.get(a.state.code);
-  game.phase = 'answer'; game.activeId = a.state.you; game.question = game.deck[0]; game.player(a.state.you).bid = 100; game.deadline = Date.now() - 1;
-  const result = await post('/api/action', { action: 'answer', answer: game.question.answers[0], turn: game.turn }, a.session);
+  game.phase = 'answer'; game.activeId = a.state.you; game.question = game.nextQuestion(); game.player(a.state.you).bid = 100; game.deadline = Date.now() - 1;
+  const choiceId = game.question.choices.find(c => c.text === game.question.answers[0]).id;
+  const result = await post('/api/action', { action: 'answer', choiceId, turn: game.turn }, a.session);
   assert.equal(result.status, 400); assert.equal(game.player(a.state.you).score, 900); assert.equal(game.pool, 100);
 });
 test('invalid sessions, duplicate names, cross-origin mutations and path traversal are rejected', async t => {

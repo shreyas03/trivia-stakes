@@ -10,7 +10,11 @@ function setup(count = 4) {
   return game;
 }
 function bid(game, id, amount) { game.action(id, 'bid', { amount, turn: game.turn }, 1); }
-function answer(game, id, value) { game.action(id, 'answer', { answer: value, turn: game.turn }, game.deadline - 1); }
+function answer(game, id, value) {
+  const choice = game.question.choices.find(option => option.text === value)
+    ?? game.question.choices.find(option => option.text !== game.question.answers[0]);
+  game.action(id, 'answer', { choiceId: choice.id, turn: game.turn }, game.deadline - 1);
+}
 function openBonus(game) {
   for (const p of game.players) game.action(p.id, 'ready', {}, game.updatedAt + 1);
   assert.equal(game.phase, 'bonus-countdown'); game.tick(game.deadline);
@@ -132,4 +136,32 @@ test('host can remove a disconnected lobby player without allowing removal durin
   game.action('a', 'remove', { playerId: 'b' }); assert.equal(game.players.length, 1);
   const active = setup(2); active.player('p1').connected = false;
   assert.throws(() => active.action('p0', 'remove', { playerId: 'p1' }), GameError);
+});
+test('every question has four unique options and exactly one accepted correct option', () => {
+  for (const question of QUESTIONS) {
+    assert.equal(question.options.length, 4, question.text);
+    assert.equal(new Set(question.options.map(s => s.toLowerCase())).size, 4, question.text);
+    assert.equal(question.options.filter(option => isCorrect(question, option)).length, 1, question.text);
+  }
+});
+test('choices are private to the active player in normal and bonus answer turns', () => {
+  const game = setup(); bid(game, 'p0', 100); bid(game, 'p1', 70); game.tick(game.deadline);
+  assert.equal(game.view('p0').question.choices.length, 4);
+  assert.ok(!('choices' in game.view('p1').question));
+  const wrong = game.question.choices.find(c => c.text !== game.question.answers[0]);
+  answer(game, 'p0', wrong.text);
+  assert.ok(!('choices' in game.view('p0').question));
+  assert.equal(game.view('p1').question.choices.length, 4);
+  assert.ok(!JSON.stringify(game.view('p2')).includes(wrong.text));
+  answer(game, 'p1', 'no'); openBonus(game);
+  for (const p of game.players) assert.ok(!('choices' in game.view(p.id).question));
+  game.action('p2', 'buzz', { turn: game.turn });
+  assert.equal(game.view('p2').question.choices.length, 4);
+  assert.ok(!('choices' in game.view('p0').question));
+});
+test('arbitrary answer text and forged choice IDs are rejected without changing points', () => {
+  const game = setup(); bid(game, 'p0', 100); game.tick(game.deadline);
+  assert.throws(() => game.action('p0', 'answer', { answer: game.question.answers[0], turn: game.turn }), GameError);
+  assert.throws(() => game.action('p0', 'answer', { choiceId: 'invalid', turn: game.turn }), GameError);
+  assert.equal(game.player('p0').score, 1000); assert.equal(game.phase, 'answer');
 });

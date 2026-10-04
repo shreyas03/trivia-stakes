@@ -4,7 +4,7 @@
 
 A browser sends a create, join, or game action over HTTP. The room service authenticates its session and advances any expired deadline. The game engine validates the action against the current phase, active player, turn identifier, and balance. The service then sends an individualized public snapshot to every room member over server-sent events.
 
-The browser renders that snapshot and uses server time to calculate its countdown. Changing a device clock does not change the server’s scoring or deadline. The server checks deadlines every 100 milliseconds and again before every action.
+The browser renders that snapshot and uses server time to calculate its countdown. Changing a device clock does not change the server’s scoring or deadline. The server checks deadlines every 100 milliseconds and again before every action. Multiple-choice options are included only in the active answering player's snapshot. The submitted option ID is validated against that question and turn; raw answer text is not accepted.
 
 ## State machine
 
@@ -30,7 +30,7 @@ Players issue occasional discrete actions. Most communication is the server push
 
 The first version prioritizes transparent rules and race-free behavior in a single process. Room mutations contain no asynchronous work. Two buzzer requests are therefore processed in order; the second sees an occupied buzzer. A turn identifier also rejects retries that refer to a previous phase, answer turn, or question.
 
-The server hides the question during bidding and countdowns, and never exposes its accepted answers through the state API. Private answer data remains in server source. Revealed answers are shown only after the question is resolved.
+The server hides the question during bidding and countdowns. During an answer turn, it sends four shuffled options only to the active player, including the correct answer without a correctness marker. It never sends the accepted-answer metadata or the selected wrong option to other players. The correct answer is revealed after that question is resolved.
 
 ## Sessions and lifecycle
 
