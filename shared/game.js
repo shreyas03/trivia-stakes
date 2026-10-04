@@ -16,7 +16,7 @@ function shuffle(items) {
 
 /** Pure game state machine. All timestamps come from the server; clients cannot award points. */
 export class Game {
-  constructor(code, { now = Date.now(), deck = shuffle(QUESTIONS) } = {}) {
+  constructor(code, { now = Date.now(), deck = shuffle(QUESTIONS), onQuestionUsed = () => {} } = {}) {
     this.code = code;
     this.players = [];
     this.hostId = null;
@@ -25,6 +25,8 @@ export class Game {
     this.pool = 0;
     this.deadline = null;
     this.deck = deck;
+    this.onQuestionUsed = onQuestionUsed;
+    this.questionSource = { status: 'ready', mode: 'local', liveCount: 0, curatedCount: deck.length };
     this.cursor = 0;
     this.question = null;
     this.order = [];
@@ -56,6 +58,7 @@ export class Game {
   nextQuestion() {
     requireRule(this.cursor < this.deck.length, 'The question deck is exhausted.');
     const question = this.deck[this.cursor++];
+    this.onQuestionUsed(question);
     return { ...question, choices: shuffle(question.options).map((text, index) => ({ id: String(index), text })) };
   }
   beginRound(now) {
@@ -153,6 +156,7 @@ export class Game {
     } else if (action === 'start') {
       requireRule(id === this.hostId, 'Only the host can start the game.');
       requireRule(this.phase === 'lobby', 'The game has already started.');
+      requireRule(this.questionSource.status === 'ready', 'Fresh questions are still loading. Please wait a moment.');
       requireRule(this.players.length >= 2 && this.players.every(p => p.connected && p.ready), 'At least 2 players must be connected, and everyone must be ready.');
       this.beginRound(now);
     } else if (action === 'bid') {
@@ -204,7 +208,7 @@ export class Game {
         text: this.question.text, category: this.question.category,
         ...(id === this.activeId && ['answer', 'bonus-answer'].includes(this.phase) ? { choices: this.question.choices.map(choice => ({ ...choice })) } : {}),
       } : null,
-      rules: RULES,
+      rules: RULES, questionSource: this.questionSource,
     };
   }
 }

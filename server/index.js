@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { Game, GameError } from '../shared/game.js';
+import { TriviaProvider } from './trivia.js';
 
 const assets = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
@@ -29,11 +30,12 @@ async function body(req) {
 }
 
 /** In-memory single-process room service. Room mutations execute synchronously. */
-export function createGameServer() {
+export function createGameServer({ questionProvider = new TriviaProvider({ enabled: process.env.TRIVIA_LIVE !== 'false' }) } = {}) {
   const rooms = new Map();
   const sessions = new Map();
   const streams = new Map();
   const rates = new Map();
+  const preparations = new Map();
   function publish(game) {
     for (const player of game.players) {
       const data = `event: state\ndata: ${JSON.stringify(game.view(player.id))}\n\n`;
@@ -48,6 +50,21 @@ export function createGameServer() {
     const game = session && rooms.get(session.code);
     if (!session || !game || !game.player(session.id)) return null;
     return { game, id: session.id };
+  }
+  function prepareQuestions(game) {
+    if (preparations.has(game.code)) return preparations.get(game.code);
+    game.questionSource = { status: 'loading', mode: 'local', liveCount: 0, curatedCount: 80 };
+    game.touch(Date.now());
+    const preparation = Promise.resolve().then(() => questionProvider.loadDeck()).then(({ deck, info }) => {
+      if (game.phase !== 'lobby') return;
+      game.deck = deck; game.cursor = 0; game.questionSource = info;
+    }).catch(() => {
+      game.questionSource = { status: 'ready', mode: 'local', liveCount: 0, curatedCount: game.deck.length };
+    }).finally(() => {
+      preparations.delete(game.code); game.touch(Date.now()); publish(game);
+    });
+    preparations.set(game.code, preparation);
+    return preparation;
   }
   function createSession(game, name) {
     const id = randomBytes(12).toString('hex');
@@ -82,9 +99,9 @@ export function createGameServer() {
           if (!allowRate(req, 'create', 15)) { json(res, 429, { error: 'Please wait before making another room.' }); return; }
           if (rooms.size >= MAX_ROOMS) { json(res, 503, { error: 'The server is full. Try again later.' }); return; }
           let code; do { code = roomCode(); } while (rooms.has(code));
-          const game = new Game(code);
+          const game = new Game(code, { onQuestionUsed: question => questionProvider.recordUsed?.(question) });
           const created = createSession(game, payload.name);
-          rooms.set(code, game); json(res, 201, created); return;
+          rooms.set(code, game); prepareQuestions(game); created.state = game.view(created.state.you); json(res, 201, created); return;
         }
         if (url.pathname === '/api/join') {
           const code = String(payload.code ?? '').trim().toUpperCase();
@@ -97,6 +114,7 @@ export function createGameServer() {
         if (url.pathname === '/api/action') {
           if (auth.game.tick()) publish(auth.game);
           auth.game.action(auth.id, payload.action, payload);
+          if (payload.action === 'rematch') prepareQuestions(auth.game);
           publish(auth.game); json(res, 200, auth.game.view(auth.id)); return;
         }
       }

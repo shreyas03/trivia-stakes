@@ -26,6 +26,7 @@ Use a service that runs a long-lived Node process or the included Docker contain
 - Bind address: `0.0.0.0`
 - Port: set `PORT` to the host’s assigned value
 - Origin: set `PUBLIC_ORIGIN` to the full public origin, for example `https://your-game.example.com`, without a trailing slash
+- Trivia: outbound HTTPS to `opentdb.com` enables live questions; set `TRIVIA_LIVE=false` for curated-only play. No API key is needed.
 
 The host should allow SSE connections longer than one round and should not cache `/api/*`. Configure access logs to redact the `session` query parameter. A deployment restart ends any active in-memory games.
 

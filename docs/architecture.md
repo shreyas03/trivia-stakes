@@ -26,6 +26,12 @@ Each fresh bonus question excludes every player who has already missed during th
 
 Players issue occasional discrete actions. Most communication is the server pushing state to connected browsers. SSE provides that direction with built-in reconnect behavior, while regular HTTP makes action failures and validation straightforward to test. It can be replaced with WebSockets if the product later requires high-frequency bidirectional interactions.
 
+## Live question preparation
+
+Each room asynchronously prepares its deck in the lobby. A single server-wide provider queues upstream requests at least 5.1 seconds apart and shares an in-flight refresh among concurrent lobbies. It obtains an Open Trivia Database session token and requests up to 50 medium multiple-choice questions using URL3986 encoding. A request times out after five seconds. Invalid, duplicated, or recently played prompts are excluded, and local questions fill the deck to 80. An upstream failure enters a one-minute retry cooldown while the curated bank keeps rooms playable.
+
+No upstream calls occur during bidding, answer turns, or bonus timers. A rematch prepares a new deck before starting. Played question fingerprints are tracked in a bounded, process-local history; unused deck entries do not enter that history. When unseen prompts run out, the oldest played local prompts return. The cache and history are intentionally ephemeral in this first version.
+
 ## Why one room state object?
 
 The first version prioritizes transparent rules and race-free behavior in a single process. Room mutations contain no asynchronous work. Two buzzer requests are therefore processed in order; the second sees an occupied buzzer. A turn identifier also rejects retries that refer to a previous phase, answer turn, or question.

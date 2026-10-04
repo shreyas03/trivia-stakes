@@ -37,10 +37,12 @@ The opening screen teaches the regular loop. Bonus rules appear only when needed
 ```text
 public/                  Browser interface, styles, and favicon
 server/index.js          HTTP API, SSE streams, sessions, room lifecycle
+server/trivia.js         Live-question loading, caching, rate limits, fallback
 shared/game.js           Server-side game state machine and scoring
 shared/questions.js      Original question bank and accepted answer matching
 tests/game.test.js       Scoring, auction, bonus, timing, and capacity checks
 tests/server.test.js     Independent sessions, stream, race, and security checks
+tests/trivia.test.js     Live format, concurrency, repeat filtering, and outages
 docs/architecture.md     Design decisions and production tradeoffs
 docs/deployment.md       Live-hosting and GitHub preparation
 .github/workflows/ci.yml Automated checks on pushes and pull requests
@@ -74,7 +76,13 @@ This is a working **local first playable version**, not a deployed public servic
 
 Rooms and sessions live in memory; restarting the server resets them. Run one server instance. A future horizontally scaled version needs a shared transactional room store or per-room actors. SSE needs a host and reverse proxy that allow long-lived streaming responses. Static-only hosting does not run this game’s server.
 
-Answers are multiple choice, with one correct option and three curated distractors. The server shuffles the options once per question and validates the submitted choice ID, so spelling and wording do not affect scoring. Options are private to the active player and contain no correctness marker. The bank contains **80 questions across 10 categories**, curated for medium difficulty: Space, Geography, History, Science, Books, Movies, Technology, Music, Gaming, and Motorsport. Regular and bonus questions use the same bank without repeats during a game. Difficulty is an editorial target; calibrate it with players before a competition. See [question bank notes](docs/question-bank.md). Network latency can affect fastest-finger ordering: the first valid request to reach the server wins. A live trivia API has been discussed but is not integrated yet.
+Answers are multiple choice, with one correct option and three distractors. The server shuffles the options once per question and validates the submitted choice ID, so spelling and wording do not affect scoring. Options are private to the active player and contain no correctness marker.
+
+**Live questions are enabled by default.** The server loads up to 50 medium-difficulty multiple-choice questions from Open Trivia Database while players join the lobby, then fills the deck to 80 with curated questions. It makes no external calls during timed rounds. If the service is unavailable, malformed, rate-limited, or exhausted, the 80-question curated bank supplies a complete game. The host's start control waits for preparation to finish, and the lobby shows readiness. Rematches load a new deck.
+
+The fallback bank spans Space, Geography, History, Science, Books, Movies, Technology, Music, Gaming, and Motorsport. Live data adds broader category coverage. Regular and bonus questions use the prepared deck without repeats within that game. The server tracks the last 500 played question fingerprints and prioritizes unseen prompts; repeat tracking and cache reset on a server restart. A finite fallback bank eventually repeats. Set `TRIVIA_LIVE=false` for offline play.
+
+Difficulty is an editorial/provider label; calibrate it with players before a competition. See [question bank notes](docs/question-bank.md) and [live-question design](docs/live-trivia.md). Network latency can affect fastest-finger ordering: the first valid request to reach the server wins.
 
 The average game duration depends on the number of players and misses. The landing page’s 15-minute estimate is a target, not a guarantee; extensive bonus play can take longer.
 

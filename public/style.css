@@ -530,6 +530,20 @@ footer {
   line-height:1.6
 }
 
+.question-status {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 15px;
+}
+
+.trivia-credit {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 15px;
+}
+
 .hidden {
   display:none!important
 }

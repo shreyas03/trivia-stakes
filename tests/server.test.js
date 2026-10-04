@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameServer } from '../server/index.js';
+import { TriviaProvider } from '../server/trivia.js';
 
-async function fixture(t) {
-  const app = createGameServer();
+async function fixture(t, questionProvider = new TriviaProvider({ enabled: false })) {
+  const app = createGameServer({ questionProvider });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   t.after(() => app.close());
   const origin = `http://127.0.0.1:${app.server.address().port}`;
@@ -68,4 +69,28 @@ test('invalid sessions, duplicate names, cross-origin mutations and path travers
   assert.equal(crossOrigin.status, 403);
   assert.equal((await fetch(`${origin}/server/index.js`)).status, 404);
   const page = await fetch(origin); assert.equal(page.status, 200); assert.match(page.headers.get('content-security-policy'), /script-src 'self'/);
+});
+test('question loading blocks start, broadcasts readiness, and requires no fetch during play', async t => {
+  let resolveDeck, calls = 0;
+  const loading = new Promise(resolve => { resolveDeck = resolve; });
+  const { post, origin, rooms } = await fixture(t, { loadDeck: () => { calls++; return loading; }, recordUsed: () => {} });
+  const a = (await post('/api/rooms', { name: 'Alice' })).data;
+  const b = (await post('/api/join', { name: 'Bob', code: a.state.code })).data;
+  assert.equal(a.state.questionSource.status, 'loading');
+  await post('/api/action', { action: 'ready' }, a.session); await post('/api/action', { action: 'ready' }, b.session);
+  assert.equal((await post('/api/action', { action: 'start' }, a.session)).status, 400);
+  const game = rooms.get(a.state.code);
+  resolveDeck({ deck: game.deck, info: { status: 'ready', mode: 'local', liveCount: 0, curatedCount: 80 } });
+  const state = await (await fetch(`${origin}/api/state`, { headers: { Authorization: `Bearer ${a.session}` } })).json();
+  assert.equal(state.questionSource.status, 'ready'); assert.ok(!JSON.stringify(state).includes('options'));
+  assert.equal((await post('/api/action', { action: 'start' }, a.session)).status, 200);
+  game.tick(game.deadline); game.tick(game.deadline); assert.equal(calls, 1);
+});
+test('rematch preloads a new deck instead of replaying the first game deck', async t => {
+  const provider = new TriviaProvider({ enabled: false }); let loads = 0;
+  const { post, rooms } = await fixture(t, { loadDeck: () => { loads++; return provider.loadDeck(); }, recordUsed: q => provider.recordUsed(q) });
+  const a = (await post('/api/rooms', { name: 'Alice' })).data;
+  const game = rooms.get(a.state.code); game.phase = 'finished';
+  const result = await post('/api/action', { action: 'rematch' }, a.session);
+  assert.equal(result.status, 200); assert.equal(result.data.phase, 'lobby'); assert.equal(loads, 2);
 });

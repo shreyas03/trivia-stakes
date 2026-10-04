@@ -8,7 +8,7 @@ Medium is an editorial target rather than a measured difficulty rating. Some top
 
 Each question has one correct option and three plausible, hand-written distractors. The options are shuffled server-side and sent only to the active answering player. Other players see the question but cannot use a previous wrong selection to eliminate options. A selection requires a separate lock-in action. Correctness is decided on the server using the selected option ID, with no text-entry judging.
 
-Answer aliases remain as authoring metadata and help check that no distractor is an accepted alternate answer. They are not a text-entry feature in the current game. Live API integration is a future step; this version uses the curated local bank.
+Answer aliases remain as authoring metadata and help check that no distractor is an accepted alternate answer. They are not a text-entry feature in the current game. The curated bank now supplements live Open Trivia Database questions and supplies the full deck when that service cannot provide usable questions. See [live-question design](live-trivia.md).
 
 ## Writing and answer policy
 
