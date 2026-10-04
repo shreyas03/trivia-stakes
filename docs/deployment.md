@@ -33,8 +33,8 @@ The host should allow SSE connections longer than one round and should not cache
 ## Optional Docker route
 
 ```sh
-docker build -t pool-party .
-docker run --rm -p 3000:3000 pool-party
+docker build -t trivia-stakes .
+docker run --rm -p 3000:3000 trivia-stakes
 ```
 
 These commands are provided for portability; the image has not been built or run in this session.

@@ -1,8 +1,8 @@
-# Pool Party
+# Trivia Stakes
 
 **Bid on what you know.** A real-time trivia auction for 2–8 friends, each on their own device. Built as an original portfolio project, with a server-authoritative game engine and a responsive browser interface.
 
-![Pool Party preview](docs/preview.jpg)
+![Trivia Stakes preview](docs/preview.jpg)
 
 ## Run it
 

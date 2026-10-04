@@ -184,7 +184,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const host = process.env.HOST ?? '0.0.0.0';
   const { server } = createGameServer();
   server.listen(port, host, () => {
-    console.log(`Pool Party is ready at http://localhost:${port}`);
+    console.log(`Trivia Stakes is ready at http://localhost:${port}`);
     for (const addresses of Object.values(networkInterfaces())) for (const address of addresses ?? []) {
       if (address.family === 'IPv4' && !address.internal) console.log(`Same-network devices: http://${address.address}:${port}`);
     }
