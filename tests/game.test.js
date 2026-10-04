@@ -44,7 +44,7 @@ test('bid validation prevents overdrafts, decreases, fractions, and out-of-range
 test('category-only view never reveals the question or accepted answers while bidding', () => {
   const game = setup(); const view = game.view('p0');
   assert.equal(view.category, 'Space'); assert.equal(view.question, null);
-  assert.ok(!JSON.stringify(view).includes('Mars')); bid(game, 'p0', 50); game.tick(game.deadline);
+  assert.ok(!JSON.stringify(view).includes(game.question.answers[0])); bid(game, 'p0', 50); game.tick(game.deadline);
   assert.ok(game.view('p0').question.text); assert.ok(!('answers' in game.view('p0').question));
 });
 test('all normal misses start bonus; passers can buzz and win the entire pool', () => {
@@ -117,8 +117,12 @@ test('only host can start, all players must be ready, and room capacity is eight
   assert.throws(() => game.addPlayer('extra', 'Extra'), GameError);
 });
 test('answers ignore case, spacing and punctuation but reject blank answers', () => {
-  assert.ok(isCorrect(QUESTIONS[0], '  MARS! ')); assert.ok(!isCorrect(QUESTIONS[0], ''));
-  assert.ok(!isCorrect(QUESTIONS[0], 'Jupiter')); assert.equal(RULES.rounds, 8);
+  assert.ok(isCorrect(QUESTIONS[0], `  ${QUESTIONS[0].answers[0].toUpperCase()}! `)); assert.ok(!isCorrect(QUESTIONS[0], ''));
+  assert.ok(!isCorrect(QUESTIONS[0], 'not an answer')); assert.equal(RULES.rounds, 8);
+  const kimi = QUESTIONS.find(q => q.text.includes('2007 Formula 1'));
+  assert.ok(isCorrect(kimi, 'Räikkönen')); assert.ok(!isCorrect(kimi, 'Button'));
+  const miyazaki = QUESTIONS.find(q => q.text.includes('Spirited Away'));
+  assert.ok(isCorrect(miyazaki, 'Miyazaki')); assert.ok(isCorrect(miyazaki, 'Hayao Miyazaki'));
 });
 test('host can remove a disconnected lobby player without allowing removal during a game', () => {
   const game = new Game('TEST42'); game.addPlayer('a', 'A'); game.addPlayer('b', 'B');

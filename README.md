@@ -74,7 +74,7 @@ This is a working **local first playable version**, not a deployed public servic
 
 Rooms and sessions live in memory; restarting the server resets them. Run one server instance. A future horizontally scaled version needs a shared transactional room store or per-room actors. SSE needs a host and reverse proxy that allow long-lived streaming responses. Static-only hosting does not run this game’s server.
 
-Answers use explicit aliases with case, whitespace, punctuation, and accent normalization. They do not use AI judging or unrestricted typo matching. The initial bank contains basic stable trivia; expand its difficulty and review its answers before a competition. Network latency can affect fastest-finger ordering: the first valid request to reach the server wins.
+Answers use explicit aliases with case, whitespace, punctuation, and accent normalization. They do not use AI judging or unrestricted typo matching. The bank contains **80 questions across 10 categories**, curated for medium difficulty: Space, Geography, History, Science, Books, Movies, Technology, Music, Gaming, and Motorsport. Regular and bonus questions use the same bank without repeats during a game. Difficulty is an editorial target; calibrate it with players before a competition. See [question bank notes](docs/question-bank.md). Network latency can affect fastest-finger ordering: the first valid request to reach the server wins.
 
 The average game duration depends on the number of players and misses. The landing page’s 15-minute estimate is a target, not a guarantee; extensive bonus play can take longer.
 
