@@ -2,6 +2,10 @@
 
 **Bid on what you know.** A real-time trivia auction for 2–8 friends, each on their own device. Built as an original portfolio project, with a server-authoritative game engine and a responsive browser interface.
 
+[**Play Trivia Stakes online**](https://trivia-stakes.saishreyastikkireddi.chatgpt.site)
+
+The public game is hosted through ChatGPT Sites using Cloudflare Workers and D1. This repository currently contains the original standalone Node implementation; the Sites adaptation is being synchronized separately.
+
 ![Trivia Stakes preview](docs/preview.jpg)
 
 ## Run it
@@ -60,7 +64,7 @@ npm test
 
 The tests cover the 1,170-point example, tied bids, balance limits, information hiding, passers winning a bonus pool, removal across fresh bonus questions, simultaneous buzzer requests, expired answer turns, all eight rounds, and the worst-case 72-question game.
 
-The first version was also exercised in two independent browser sessions: create, join, ready, start, live bids, wrong answer, and correct answer with the expected score. The phone breakpoint was checked for horizontal overflow at a 390-pixel viewport. Physical-device and public-hosting checks remain to be done.
+The first version was also exercised in two independent browser sessions: create, join, ready, start, live bids, wrong answer, and correct answer with the expected score. The phone breakpoint was checked for horizontal overflow at a 390-pixel viewport. The Sites adaptation has since been published publicly. Physical-device validation of the hosted game remains a separate check.
 
 ## Technical decisions
 
@@ -72,7 +76,7 @@ The first version was also exercised in two independent browser sessions: create
 
 ## Current scope
 
-This is a working **local first playable version**, not a deployed public service. GitHub CI is configured but has not run on GitHub yet, and the Docker image has not been built in this environment.
+The game is **live on ChatGPT Sites** at the link above. GitHub Actions has successfully run the original project's checks. The code in this repository remains the standalone Node version until the Sites source is synchronized; its in-memory storage limitations below apply to that runtime. The Docker image has not been built in this environment.
 
 Rooms and sessions live in memory; restarting the server resets them. Run one server instance. A future horizontally scaled version needs a shared transactional room store or per-room actors. SSE needs a host and reverse proxy that allow long-lived streaming responses. Static-only hosting does not run this game’s server.
 
