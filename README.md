@@ -1,99 +1,46 @@
 # Trivia Stakes
 
-**Bid on what you know.** A real-time trivia auction for 2–8 friends, each on their own device. Built as an original portfolio project, with a server-authoritative game engine and a responsive browser interface.
+A real-time trivia auction game for 2-8 players joining by room code. Start with 1,000 points, bid on categories, answer privately, and win the pool. Eight regular rounds, four or more host-selected categories, and fastest-buzzer bonus questions.
 
-[**Play Trivia Stakes online**](https://trivia-stakes.saishreyastikkireddi.chatgpt.site)
-
-The public game is hosted through ChatGPT Sites using Cloudflare Workers and D1. This repository currently contains the original standalone Node implementation; the Sites adaptation is being synchronized separately.
+Play the published game at [Trivia Stakes](https://trivia-stakes.saishreyastikkireddi.chatgpt.site).
 
 ![Trivia Stakes preview](docs/preview.jpg)
 
-## Run it
+## Sites hosting
+This version runs on Cloudflare Workers through ChatGPT Sites and Vinext. D1 stores room state and hashed player sessions. Conditional database updates serialize competing actions so only one bonus buzzer wins. Clients refresh authoritative room state every 500 ms after each response; deadlines remain server-owned. Timers are advanced by active clients' requests, and inactive rooms expire after six hours. No question or scoring decision is trusted to the browser.
 
-Requires **Node.js 22 or newer**. There are no third-party runtime dependencies and no installation step.
+The existing Node server remains available for standalone local development. Both runtimes share the same game engine and curated question bank.
+
+## Setup
+Use Node 22.13 or newer:
 
 ```sh
-npm start
+npm run install:ci
+npm run check
+npm test
+npm run build
 ```
 
-Open **http://localhost:3000**. Create a room, then open the same address in another independent browser tab to join by code. Each tab gets its own player session. Use a newly opened tab rather than duplicating a tab, because browsers may clone a duplicated tab’s session storage.
-
-For a phone or another computer on the same Wi-Fi, use the **Same-network devices** address printed by the server. The host computer must stay running, and its firewall must permit inbound access to the selected port. A loopback URL such as localhost always refers to the device opening it.
-
-The server defaults to port 3000 and listens on all local interfaces. Set `PORT`, `HOST`, and (for production) `PUBLIC_ORIGIN` in your hosting environment. `.env.example` documents the variables; the application does not automatically load `.env` files.
-
-## How to play
-
-1. Everyone starts with **1,000 points**. There are **8 regular rounds**.
-2. See the category, but not the question. For 25 seconds, openly raise your own bid from **50 to 300**, in increments of 10. You may pass by not bidding. You cannot bid more than your balance.
-3. Bidders answer in descending bid order. A tie goes to the player who placed that current bid earlier. You have **15 seconds** to choose one of four options and lock it in. Only the active player receives the options; other players see the question and success or failure, but never the selected wrong option.
-4. Correct: earn your bid plus the pool. Your stake is not deducted first. Incorrect or timed out: lose your bid into the pool, then the next bidder answers the same question. Unattempted bids cost nothing.
-5. If every bidder misses, read the bonus explanation. Everyone can play, including players who passed or have fewer than 50 points. No new wagers. Buzz first and answer correctly to claim the pool.
-6. A bonus miss removes that player for the **entire bonus sequence**. The remaining players receive a **fresh question**, after a three-second countdown. There is no extra point deduction. If everyone misses, or nobody buzzes within 20 seconds, the pool clears. Everyone returns next regular round.
-7. The highest score after eight rounds wins. Tied leaders share the win. The host can start a rematch with the same room code.
-
-**Example:** Alice bids 100 and misses: 1,000 → 900, pool = 100. Bob bids 70 and answers correctly: 1,000 + 70 + 100 = **1,170**. The pool resets.
-
-The opening screen teaches the regular loop. Bonus rules appear only when needed; the complete rules remain available throughout the game. The bonus explanation allows up to 25 seconds to read and ends earlier when all connected players are ready. The first bonus question starts after a countdown, so reading time never consumes the answer timer.
+For a database-backed local preview, apply the migration and run the built Worker as described in [deployment instructions](docs/deployment.md). `npm run dev` serves the framework preview at http://localhost:5173. `npm run dev:node` runs the original Node server at http://localhost:3000 without a database. `npm start` runs the built Worker, so build and initialize its local database first.
 
 ## Project structure
 
-```text
-public/                  Browser interface, styles, and favicon
-server/index.js          HTTP API, SSE streams, sessions, room lifecycle
-server/trivia.js         Live-question loading, caching, rate limits, fallback
-shared/game.js           Server-side game state machine and scoring
-shared/questions.js      Original question bank and accepted answer matching
-tests/game.test.js       Scoring, auction, bonus, timing, and capacity checks
-tests/server.test.js     Independent sessions, stream, race, and security checks
-tests/trivia.test.js     Live format, concurrency, repeat filtering, and outages
-docs/architecture.md     Design decisions and production tradeoffs
-docs/deployment.md       Live-hosting and GitHub preparation
-.github/workflows/ci.yml Automated checks on pushes and pull requests
-Dockerfile               Portable single-process deployment
-```
+- `app/`, `build/`, and `vite.config.ts`: Vinext routes and Sites Worker integration.
+- `lib/room-service.mjs` and `lib/trivia.mjs`: D1-backed rooms, sessions, and trivia preparation.
+- `db/` and `drizzle/`: database schema and SQL migrations.
+- `shared/`: common game rules and curated questions; never served to clients.
+- `public/`: browser interface used by both runtimes.
+- `server/`: standalone Node server with in-memory rooms.
+- `tests/`: game, Node server, trivia, and database-backed concurrency checks.
 
-Despite its folder name, `shared/` is **not served to the browser**. The server never sends accepted answers before a reveal.
+See [architecture notes](docs/architecture.md) for the runtime differences. CI installs the locked dependencies, checks JavaScript syntax, runs the tests, and builds the Sites Worker. CI does not deploy the live site.
 
-## Verify
+## Question sources
+Medium four-choice questions from Open Trivia Database are cached before play, with the curated bank as fallback. A database lease spaces upstream fetches across rooms. Recently consumed prompts are persisted to reduce repeats. Small category pools may repeat after unique questions are exhausted; the lobby explains this.
 
-```sh
-npm run check
-npm test
-```
+Open Trivia Database content is under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); category labels and option order are adapted. Attribution appears in the game when a live deck is used. Code licensing remains an owner decision. No API key or player data is sent to the trivia provider.
 
-The tests cover the 1,170-point example, tied bids, balance limits, information hiding, passers winning a bonus pool, removal across fresh bonus questions, simultaneous buzzer requests, expired answer turns, all eight rounds, and the worst-case 72-question game.
+## Validation and limits
+Tests cover scoring, hidden options, stale turns, concurrent room joins, concurrent buzzer attempts, category filtering, timers, bonus elimination, and trivia fallback. D1 compare-and-swap retries prevent lost updates. The first successfully committed buzz wins; network and storage latency affect arrival order. This is a casual party game, not a precision timing competition.
 
-The first version was also exercised in two independent browser sessions: create, join, ready, start, live bids, wrong answer, and correct answer with the expected score. The phone breakpoint was checked for horizontal overflow at a 390-pixel viewport. The Sites adaptation has since been published publicly. Physical-device validation of the hosted game remains a separate check.
-
-## Technical decisions
-
-- **Server authority:** clients request actions; the server controls scores, timers, answer validation, and buzzer ownership.
-- **Server-sent events:** actions use HTTP, updates push to every player immediately. SSE suits a predominantly server-to-browser update stream and reconnects automatically.
-- **Atomic turns:** mutations are synchronous in one Node process. A turn identifier prevents a delayed request from affecting a newer question.
-- **No accounts:** random session tokens restore a player after a refresh. Room codes identify a room, not a player’s authority.
-- **Small dependency surface:** modern browser JavaScript and Node’s built-in HTTP, crypto, and test modules keep setup approachable.
-
-## Current scope
-
-The game is **live on ChatGPT Sites** at the link above. GitHub Actions has successfully run the original project's checks. The code in this repository remains the standalone Node version until the Sites source is synchronized; its in-memory storage limitations below apply to that runtime. The Docker image has not been built in this environment.
-
-Rooms and sessions live in memory; restarting the server resets them. Run one server instance. A future horizontally scaled version needs a shared transactional room store or per-room actors. SSE needs a host and reverse proxy that allow long-lived streaming responses. Static-only hosting does not run this game’s server.
-
-Answers are multiple choice, with one correct option and three distractors. The server shuffles the options once per question and validates the submitted choice ID, so spelling and wording do not affect scoring. Options are private to the active player and contain no correctness marker.
-
-**Live questions are enabled by default.** The server loads up to 50 medium-difficulty multiple-choice questions from Open Trivia Database while players join the lobby, then fills the deck to 80 with curated questions. It makes no external calls during timed rounds. If the service is unavailable, malformed, rate-limited, or exhausted, the 80-question curated bank supplies a complete game. The host's start control waits for preparation to finish, and the lobby shows readiness. Rematches load a new deck.
-
-The fallback bank spans Space, Geography, History, Science, Books, Movies, Technology, Music, Gaming, and Motorsport. Live data adds broader category coverage. Regular and bonus questions use the prepared deck without repeats within that game. The server tracks the last 500 played question fingerprints and prioritizes unseen prompts; repeat tracking and cache reset on a server restart. A finite fallback bank eventually repeats. Set `TRIVIA_LIVE=false` for offline play.
-
-Difficulty is an editorial/provider label; calibrate it with players before a competition. See [question bank notes](docs/question-bank.md) and [live-question design](docs/live-trivia.md). Network latency can affect fastest-finger ordering: the first valid request to reach the server wins.
-
-The average game duration depends on the number of players and misses. The landing page’s 15-minute estimate is a target, not a guarantee; extensive bonus play can take longer.
-
-See [deployment instructions](docs/deployment.md) and [architecture notes](docs/architecture.md).
-
-
-### Host category selection
-In the lobby, the host chooses at least four of the ten categories. All are selected by default. The same selection filters regular and bonus questions, including live questions and curated fallback. Changes reset player readiness and prepare a new deck; only the latest selection is applied. Rematches retain the selection.
-
-A small selected bank may repeat questions after its unique prompts are consumed. The lobby displays this notice. A complete deck is prepared before play, so an outage or bonus-heavy game never adds an unselected category. Space and Motorsport currently use curated questions; live questions are matched to the other supported category labels. Cache and repeat history reset on server restart.
+This repository is [shreyas03/trivia-stakes](https://github.com/shreyas03/trivia-stakes). It imports published Sites version 1, source commit `4bd9c0b853eeeb312d950a1a25b018be23751c0a`, while retaining the original GitHub history and the Sites source history. The tracked `.openai/hosting.json` identifies the existing Sites project. Sites maintains a separate deployment source repository; a GitHub push alone does not publish it. See [source synchronization](docs/deployment.md#source-synchronization) before future releases. Original Node room sessions are not migrated to the hosted database.

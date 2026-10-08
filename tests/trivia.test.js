@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TriviaProvider, parseLiveQuestion, questionKey } from '../server/trivia.js';
+import { TriviaProvider, parseLiveQuestion, questionKey } from '../lib/trivia.mjs';
 import { QUESTIONS } from '../shared/questions.js';
 
 function row(n = 0, prefix = 'Fresh') {

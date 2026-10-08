@@ -1,7 +1,5 @@
-name: Game checks
-on:
-  push:
-  pull_request:
+name: Game checks and Sites build
+on: [push, pull_request]
 permissions:
   contents: read
 jobs:
@@ -11,6 +9,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.13.0'
+          cache: npm
+      - run: npm run install:ci
       - run: npm run check
       - run: npm test
+      - run: npm run build

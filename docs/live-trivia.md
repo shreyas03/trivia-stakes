@@ -1,5 +1,9 @@
 # Live questions
 
+## Hosted runtime
+
+The published Sites runtime implements question preparation in `lib/trivia.mjs`. D1 persists the cache and recent prompts, and a database lease coordinates upstream requests across rooms. Worker restarts do not clear this database state. The process-local queue, environment switch, and restart behavior described below apply to `server/trivia.js` in the standalone Node runtime. Both runtimes prepare decks before play and retain curated fallback.
+
 ## Behavior
 
 Open Trivia Database is the default live source. It requires no API key. While people join a room, the server requests a session token and a batch of up to 50 medium-difficulty multiple-choice questions. The remaining slots in an 80-question deck come from the curated bank, preserving specialist coverage and enough questions for the worst-case 72-question game.

@@ -1,5 +1,13 @@
 # Architecture and decisions
 
+## Published Sites runtime
+
+The published game runs in Cloudflare Workers through Vinext. `app/api/[...path]/route.ts` passes requests to `lib/room-service.mjs` with the D1 `DB` binding. D1 stores room snapshots, hashed sessions, rate limits, trivia cache entries, and recent-question fingerprints. Revision-checked conditional updates retry competing mutations, preventing lost joins or duplicate buzzer winners. `db/schema.ts` and `drizzle/` describe this storage.
+
+The shared browser client polls authoritative state 500 ms after a successful response, or 1.5 seconds after a failed request. Requests advance expired deadlines; the hosted runtime has no process-local timer loop. Question options remain private to the answering player. Room state persists outside individual Worker invocations, with six-hour inactivity expiry. Live-question preparation uses a database lease to coordinate upstream requests across rooms.
+
+The sections below describe the retained standalone Node runtime. It shares `shared/game.js`, the curated bank, and browser assets with Sites, but keeps rooms and sessions in memory. Its SSE transport and timer loop remain available; the current browser client uses polling in both runtimes. Node sessions and hosted D1 sessions are separate.
+
 ## Data flow
 
 A browser sends a create, join, or game action over HTTP. The room service authenticates its session and advances any expired deadline. The game engine validates the action against the current phase, active player, turn identifier, and balance. The service then sends an individualized public snapshot to every room member over server-sent events.
@@ -56,4 +64,4 @@ These are initial safeguards, not a claim of independent security audit. A publi
 
 ## Next production steps
 
-Verify on two physical devices. Choose a Node-capable public host. Add durable room storage if games must survive restarts. For multiple instances, use shared atomic room updates or one authoritative actor per room and fan updates out through a broker. Add observability, larger question coverage, and accessibility testing with real players.
+Verify the published Sites version on two physical devices. Add observability, larger question coverage, and accessibility testing with real players. The standalone Node runtime still needs durable storage before scaling to multiple instances; the hosted runtime already uses D1 and conditional room updates. See [deployment instructions](deployment.md) for both paths.

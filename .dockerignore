@@ -5,3 +5,7 @@ node_modules
 docs
 tests
 *.log
+.sites-import
+.sites-runtime
+.wrangler
+dist
