@@ -35,6 +35,8 @@ For a database-backed local preview, apply the migration and run the built Worke
 
 See [architecture notes](docs/architecture.md) for the runtime differences. CI installs the locked dependencies, checks JavaScript syntax, runs the tests, and builds the Sites Worker. CI does not deploy the live site.
 
+The repository keeps the game source and required Sites integration; unused starter UI components, sample apps, and placeholder assets have been removed.
+
 ## Question sources
 Medium four-choice questions from Open Trivia Database are cached before play, with the curated bank as fallback. A database lease spaces upstream fetches across rooms. Recently consumed prompts are persisted to reduce repeats. Small category pools may repeat after unique questions are exhausted; the lobby explains this.
 
